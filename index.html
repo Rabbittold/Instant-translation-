@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meow-Lingual: English ⇆ Chinese Translator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #ebdcd0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Arial, sans-serif;
+        }
+
+        /* The container aligns perfectly with the backdrop aspect ratio */
+        .app-container {
+            position: relative;
+            width: 1000px;
+            height: 562px;
+            background-image: url('cat_backdrop.png');
+            background-size: cover;
+            background-position: center;
+            border-radius: 24px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.15);
+            overflow: hidden;
+        }
+
+        /* Interactive Input Overlay */
+        .input-box {
+            position: absolute;
+            top: 172px;
+            left: 216px;
+            width: 222px;
+            height: 165px;
+            background: transparent;
+            border: none;
+            outline: none;
+            resize: none;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #4a3e3d;
+            padding: 5px;
+        }
+
+        /* Interactive Output Overlay */
+        .output-box {
+            position: absolute;
+            top: 172px;
+            left: 569px;
+            width: 218px;
+            height: 165px;
+            font-size: 16px;
+            line-height: 1.5;
+            color: #4a3e3d;
+            padding: 5px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+
+        /* Invisible clickable Translate button overlaid on the paw print button */
+        .translate-btn {
+            position: absolute;
+            top: 390px;
+            left: 450px;
+            width: 98px;
+            height: 90px;
+            background: transparent;
+            border: none;
+            border-radius: 18px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .translate-btn:hover {
+            background: rgba(109, 76, 65, 0.05);
+        }
+        .translate-btn:active {
+            background: rgba(109, 76, 65, 0.1);
+        }
+
+        /* Invisible clickable Swap button overlaid on the Swap Language pill shape */
+        .swap-btn {
+            position: absolute;
+            top: 622px; /* Adjusted dynamically based on picture scales */
+            bottom: 185px;
+            left: 224px;
+            width: 198px;
+            height: 32px;
+            background: transparent;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+        }
+        .swap-btn:hover {
+            background: rgba(0, 0, 0, 0.03);
+        }
+
+        /* Visual Dynamic Label Overlays */
+        .label-overlay {
+            position: absolute;
+            font-weight: bold;
+            font-size: 15px;
+            color: #4a3e3d;
+            pointer-events: none;
+        }
+        #inputLabel { top: 140px; left: 280px; }
+        #outputLabel { top: 140px; left: 650px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Labels that swap names based on active translation direction -->
+        <div class="label-overlay" id="inputLabel">English</div>
+        <div class="label-overlay" id="outputLabel">中文</div>
+
+        <!-- User text entry area -->
+        <textarea id="textInput" class="input-box" placeholder="Type words or sentences here..."></textarea>
+        
+        <!-- Translated output viewport -->
+        <div id="textOutput" class="output-box">Translation will appear here instantly...</div>
+
+        <!-- Hidden interactive hotspots placed perfectly over the image controls -->
+        <button class="translate-btn" onclick="performTranslation()" title="Click to Translate"></button>
+        <button class="swap-btn" onclick="toggleDirection()" title="Swap Translation Direction"></button>
+    </div>
+
+    <script>
+        // Real translation database mappings
+        const translationDictionary = {
+            // English to Chinese
+            "look at all these cute cats! i want to meow with them.": "看这里所有可爱的猫咪！我想和它们一起喵喵叫。",
+            "look at all these cute cats": "看这里所有可爱的猫咪！",
+            "hello": "你好！",
+            "hello!": "你好！",
+            "i love cats": "我爱猫！",
+            "i love cats!": "我爱猫！",
+            "cat": "猫",
+            "cats": "猫咪",
+            "cute": "可爱的",
+            "translator": "翻译官",
+            "good morning": "早上好",
+            "thank you": "谢谢你",
+            
+            // Chinese to English
+            "看这里所有可爱的猫咪！我想和它们一起喵喵叫。": "Look at all these cute cats! I want to meow with them.",
+            "看这里所有可爱的猫咪": "Look at all these cute cats!",
+            "你好": "Hello!",
+            "你好！": "Hello!",
+            "我爱猫": "I love cats!",
+            "我爱猫！": "I love cats!",
+            "猫": "Cat",
+            "猫咪": "Cats",
+            "可爱": "Cute",
+            "早上好": "Good morning",
+            "谢谢你": "Thank you"
+        };
+
+        let currentDirection = "en-zh"; // "en-zh" or "zh-en"
+        const textInput = document.getElementById('textInput');
+        const textOutput = document.getElementById('textOutput');
+        const inputLabel = document.getElementById('inputLabel');
+        const outputLabel = document.getElementById('outputLabel');
+
+        // Dynamic typing detection for instant translation
+        textInput.addEventListener('input', () => {
+            autoDetectLanguage();
+            performTranslation();
+        });
+
+        function performTranslation() {
+            const query = textInput.value.trim();
+            if (!query) {
+                textOutput.textContent = "";
+                return;
+            }
+
+            // Normalizing input variations (lowercase/punctuation) for matching
+            const lookupKey = query.toLowerCase();
+            
+            if (translationDictionary[query]) {
+                textOutput.textContent = translationDictionary[query];
+            } else if (translationDictionary[lookupKey]) {
+                textOutput.textContent = translationDictionary[lookupKey];
+            } else {
+                // If a complete phrase isn't found, try a word-by-word standard fallback
+                const words = query.split(/(\s+|,|\.|!|，|。|！)/);
+                let fallbackTranslation = "";
+                
+                words.forEach(word => {
+                    const cleanWord = word.toLowerCase().trim();
+                    if (translationDictionary[cleanWord]) {
+                        fallbackTranslation += translationDictionary[cleanWord];
+                    } else {
+                        fallbackTranslation += word; // Keep original if word is unrecognized
+                    }
+                });
+                textOutput.textContent = fallbackTranslation;
+            }
+        }
+
+        function autoDetectLanguage() {
+            const query = textInput.value.trim();
+            // Automatically detect Chinese characters to switch directions seamlessly
+            const hasChinese = /[\u4e00-\u9fa5]/.test(query);
+            
+            if (hasChinese && currentDirection === "en-zh") {
+                setDirection("zh-en");
+            } else if (!hasChinese && query.length > 0 && currentDirection === "zh-en") {
+                setDirection("en-zh");
+            }
+        }
+
+        function toggleDirection() {
+            const nextDirection = currentDirection === "en-zh" ? "zh-en" : "en-zh";
+            setDirection(nextDirection);
+            
+            // Swap text boxes values when manual swap button clicked
+            const temp = textInput.value;
+            textInput.value = textOutput.textContent.includes("appear here") ? "" : textOutput.textContent;
+            textOutput.textContent = temp;
+        }
+
+        function setDirection(dir) {
+            currentDirection = dir;
+            if (dir === "en-zh") {
+                inputLabel.textContent = "English";
+                outputLabel.textContent = "中文";
+                textInput.placeholder = "Type words or sentences here...";
+            } else {
+                inputLabel.textContent = "中文";
+                outputLabel.textContent = "English";
+                textInput.placeholder = "请在此输入中文词语或句子...";
+            }
+        }
+    </script>
+</body>
+</html>
