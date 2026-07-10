@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meow-Lingual: English ⇆ Chinese Translator</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background-color: #ebdcd0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: "Microsoft YaHei", "Helvetica Neue", Arial, sans-serif;
+            padding: 20px;
+        }
+
+        /* The overall glass panel container */
+        .app-window {
+            position: relative;
+            width: 100%;
+            max-width: 900px;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 4px solid #ffffff;
+            border-radius: 28px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(109, 76, 65, 0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* App Header Layout */
+        .app-header {
+            background: #fffbf7;
+            border: 2px solid #6d4c41;
+            border-radius: 18px;
+            padding: 12px;
+            text-align: center;
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #4a3e3d;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+
+        /* Interactive workspace matching your design columns */
+        .workspace {
+            display: grid;
+            grid-template-columns: 1fr 110px 1fr;
+            gap: 15px;
+            align-items: center;
+        }
+
+        @media (max-width: 768px) {
+            .workspace {
+                grid-template-columns: 1fr;
+            }
+            .center-control {
+                margin: 10px 0;
+            }
+        }
+
+        .column {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Input / Output Header Badges */
+        .badge {
+            background: #ffffff;
+            border: 2px solid #6d4c41;
+            border-radius: 14px;
+            padding: 6px 14px;
+            font-weight: bold;
+            font-size: 0.95rem;
+            color: #4a3e3d;
+            align-self: flex-start;
+        }
+
+        /* Box styling matching the original prompt aesthetic */
+        .text-panel {
+            background: #fffbf7;
+            border: 2px solid #d7ccc8;
+            border-radius: 20px;
+            padding: 15px;
+            height: 180px;
+            position: relative;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.03);
+        }
+
+        .text-panel textarea {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: transparent;
+            resize: none;
+            outline: none;
+            font-size: 1.05rem;
+            line-height: 1.5;
+            color: #4a3e3d;
+        }
+
+        .text-panel .output-display {
+            width: 100%;
+            height: 100%;
+            overflow-y: auto;
+            font-size: 1.05rem;
+            line-height: 1.5;
+            color: #4a3e3d;
+            white-space: pre-wrap;
+            word-break: break-all;
+        }
+
+        .paw-watermark {
+            position: absolute;
+            bottom: 10px;
+            right: 12px;
+            font-size: 1.8rem;
+            opacity: 0.12;
+            pointer-events: none;
+        }
+
+        /* Center Control: Visible, fully functioning paw button */
+        .center-control {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .paw-button {
+            background: #ffffff;
+            border: 2px solid #6d4c41;
+            border-radius: 18px;
+            width: 90px;
+            height: 90px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 6px 12px rgba(109,76,65,0.1);
+            transition: transform 0.15s, background-color 0.15s;
+        }
+
+        .paw-button:hover {
+            transform: scale(1.05);
+            background: #fffbf7;
+        }
+
+        .paw-button:active {
+            transform: scale(0.95);
+        }
+
+        .paw-button .paw-icon {
+            font-size: 1.8rem;
+        }
+
+        .paw-button .paw-text {
+            font-size: 0.7rem;
+            font-weight: 900;
+            color: #4a3e3d;
+            margin-top: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        /* Bottom pill row for controls */
+        .action-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 5px;
+        }
+
+        .pill-btn {
+            background: #ffffff;
+            border: 2px solid #6d4c41;
+            border-radius: 12px;
+            padding: 6px 14px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            color: #4a3e3d;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .pill-btn:hover {
+            background: #ebdcd0;
+        }
+
+        /* Quick Reference Dictionary Panel at base */
+        .dictionary-panel {
+            background: #fffbf7;
+            border: 2px solid #d7ccc8;
+            border-radius: 16px;
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-around;
+            gap: 15px;
+            font-size: 0.9rem;
+            color: #4a3e3d;
+        }
+
+        .dict-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-window">
+        <!-- App Title Banner -->
+        <div class="app-header">
+            🐾 Meow-Lingual: English ⇆ Chinese Translator 🐾
+        </div>
+
+        <!-- Translation Core Grid -->
+        <div class="workspace">
+            
+            <!-- Left Side: Source Input Box -->
+            <div class="column">
+                <div class="badge" id="inputBadge">Input English</div>
+                <div class="text-panel">
+                    <textarea id="textInput" placeholder="Type words or sentences here... (Auto-detects language)"></textarea>
+                    <div class="paw-watermark">🐾</div>
+                </div>
+                <div class="action-row">
+                    <button class="pill-btn" onclick="swapLanguages()">⇄ Swap Languages</button>
+                </div>
+            </div>
+
+            <!-- Center Side: Actual Interactive Paw Button -->
+            <div class="center-control">
+                <button class="paw-button" onclick="triggerTranslation()" title="Click to Translate">
+                    <span class="paw-icon">🐾</span>
+                    <span class="paw-text">TRANSLATE!</span>
+                </button>
+            </div>
+
+            <!-- Right Side: Destination Translation Output Box -->
+            <div class="column">
+                <div class="badge" id="outputBadge">Output 中文</div>
+                <div class="text-panel">
+                    <div id="textOutput" class="output-display">Chinese translation will appear here instantly...</div>
+                    <div class="paw-watermark">🐾</div>
+                </div>
+                <div class="action-row" style="justify-content: flex-end;">
+                    <button class="pill-btn" onclick="copyResult()">📋 Copy</button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Base Quick Dictionary Sandbox Examples -->
+        <div class="dictionary-panel">
+            <div class="dict-item">
+                <strong>Hello!</strong>
+                <span>你好！</span>
+            </div>
+            <div class="dict-item">
+                <strong>I love cats!</strong>
+                <span>我爱猫！</span>
+            </div>
+            <div class="dict-item">
+                <strong>Look at all these cute cats!</strong>
+                <span>看这里所有可爱的猫咪！</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Production bilingual index core data
+        const dictionary = {
+            // English to Chinese Matrix
+            "hello": "你好！",
+            "hello!": "你好！",
+            "cat": "猫",
+            "cats": "猫咪",
+            "cute": "可爱的",
+            "i love cats": "我爱猫！",
+            "i love cats!": "我爱猫！",
+            "look at all these cute cats!": "看这里所有可爱的猫咪！",
+            "look at all these cute cats! i want to meow with them.": "看这里所有可爱的猫咪！我想和它们一起喵喵叫。",
+            "i want to meow with them.": "我想和它们一起喵喵叫。",
+            "good morning": "早上好",
+            "thank you": "谢谢你",
+            
+            // Chinese to English Matrix
+            "你好": "Hello!",
+            "你好！": "Hello!",
+            "猫": "Cat",
+            "猫咪": "Cats",
+            "可爱": "Cute",
+            "我爱猫": "I love cats!",
+            "我爱猫！": "I love cats!",
+            "看这里所有可爱的猫咪！": "Look at all these cute cats!",
+            "看这里所有可爱的猫咪！我想和它们一起喵喵叫。": "Look at all these cute cats! I want to meow with them.",
+            "我想和它们一起喵喵叫。": "I want to meow with them.",
+            "早上好": "Good morning",
+            "谢谢你": "Thank you"
+        };
+
+        let activeMode = "en-zh"; // "en-zh" (English to Chinese) or "zh-en" (Chinese to English)
+        const textInput = document.getElementById('textInput');
+        const textOutput = document.getElementById('textOutput');
+        const inputBadge = document.getElementById('inputBadge');
+        const outputBadge = document.getElementById('outputBadge');
+
+        // Dynamic Instant Event Engine Listener
+        textInput.addEventListener('input', () => {
+            autoDetectLanguageDirection();
+            triggerTranslation();
+        });
+
+        function triggerTranslation() {
+            const rawQuery = textInput.value.trim();
+            if (!rawQuery) {
+                textOutput.textContent = activeMode === "en-zh" ? "Chinese translation will appear here..." : "English translation will appear here...";
+                return;
+            }
+
+            const cleanQuery = rawQuery.toLowerCase();
+
+            // 1. Direct dictionary full lookup index search
+            if (dictionary[rawQuery]) {
+                textOutput.textContent = dictionary[rawQuery];
+            } else if (dictionary[cleanQuery]) {
+                textOutput.textContent = dictionary[cleanQuery];
+            } else {
+                // 2. Tokenizer parsing segment word fallback translation loop
+                let outputStr = "";
+                if (activeMode === "en-zh") {
+                    const tokens = rawQuery.split(/(\s+|,|\.|!|\?)/);
+                    tokens.forEach(tok => {
+                        const cleanTok = tok.toLowerCase().trim();
+                        if (dictionary[cleanTok]) {
+                            outputStr += dictionary[cleanTok];
+                        } else {
+                            outputStr += tok; // Keep punctuation/unmatched strings
+                        }
+                    });
+                } else {
+                    // Chinese token matching sequence logic fallback
+                    let remnants = rawQuery;
+                    let parsedStr = "";
+                    // Quick phrase segment check
+                    for (const [key, value] of Object.entries(dictionary)) {
+                        if (remnants.includes(key) && /[\u4e00-\u9fa5]/.test(key)) {
+                            remnants = remnants.replace(new RegExp(key, 'g'), ` ${value} `);
+                        }
+                    }
+                    outputStr = remnants;
+                }
+                textOutput.textContent = outputStr;
+            }
+        }
+
+        // Automatic script direction sensing engine based on Unicode range checking
+        function autoDetectLanguageDirection() {
+            const val = textInput.value.trim();
+            const containsChinese = /[\u4e00-\u9fa5]/.test(val);
+
+            if (containsChinese && activeMode === "en-zh") {
+                changeModeStyle("zh-en");
+            } else if (!containsChinese && val.length > 0 && activeMode === "zh-en") {
+                changeModeStyle("en-zh");
+            }
+        }
+
+        function swapLanguages() {
+            const targetMode = activeMode === "en-zh" ? "zh-en" : "en-zh";
+            changeModeStyle(targetMode);
+            
+            const oldInput = textInput.value;
+            const oldOutput = textOutput.textContent;
+
+            // Swap text boxes safely
+            textInput.value = (oldOutput.includes("appear here")) ? "" : oldOutput;
+            textOutput.textContent = oldInput ? oldInput : "Translation will appear here...";
+            triggerTranslation();
+        }
+
+        function changeModeStyle(mode) {
+            activeMode = mode;
+            if (mode === "en-zh") {
+                inputBadge.textContent = "Input English";
+                outputBadge.textContent = "Output 中文";
+                textInput.placeholder = "Type words or sentences here...";
+            } else {
+                inputBadge.textContent = "输入 中文";
+                outputBadge.textContent = "Output English";
+                textInput.placeholder = "请在此处输入中文单字或句子...";
+            }
+        }
+
+        function copyResult() {
+            const text = textOutput.textContent;
+            if (text && !text.includes("appear here")) {
+                navigator.clipboard.writeText(text);
+                alert("Copied to clipboard! 🐾");
+            }
+        }
+    </script>
+</body>
+  </html>
